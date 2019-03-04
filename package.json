@@ -1,0 +1,52 @@
+{
+  "name": "warmer",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "webpack",
+    "server": "node app.js",
+    "js:lint": "mocha test/js.lint",
+    "js:lint:fix": "mocha test/js.lint --fix=true",
+    "css:lint": "mocha test/css.lint --delay",
+    "css:lint:fix": "mocha test/css.lint --delay --fix=true"
+  },
+  "dependencies": {
+    "babel-eslint": "^10.0.1",
+    "bootstrap": "^4.3.1",
+    "cookie-parser": "~1.4.3",
+    "debug": "~2.6.9",
+    "express": "~4.16.0",
+    "hbs": "~4.0.1",
+    "http-errors": "~1.6.2",
+    "jquery": "^3.3.1",
+    "morgan": "~1.9.0",
+    "style-loader": "^0.23.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.3.4",
+    "@babel/preset-env": "^7.3.4",
+    "babel-loader": "^8.0.5",
+    "compression-webpack-plugin": "^2.0.0",
+    "css-loader": "^2.1.0",
+    "mini-css-extract-plugin": "^0.5.0",
+    "sass": "^1.17.2",
+    "sass-loader": "^7.1.0",
+    "terser-webpack-plugin": "*",
+    "webpack": "^4.29.6",
+    "webpack-cli": "^3.2.3",
+    "webpack-dev-middleware": "^1.12.0",
+    "eslint": "5.15.0",
+    "eslint-config-standard": "12.0.0",
+    "eslint-import-resolver-webpack": "0.11.0",
+    "eslint-plugin-import": "2.16.0",
+    "eslint-plugin-node": "8.0.1",
+    "eslint-plugin-promise": "4.0.1",
+    "eslint-plugin-standard": "4.0.0",
+    "stylelint": "9.10.1",
+    "stylelint-config-recommended-scss": "3.2.0",
+    "stylelint-config-standard": "18.2.0",
+    "stylelint-scss": "3.5.4",
+    "chai": "4.2.0",
+    "mocha": "6.0.2"
+  }
+}

@@ -7,7 +7,7 @@ router.get('/netcdf/read', function(req, res, next) {
   const file = './nc/Complete_TMAX_EqualArea.nc';
   //const data = fs.readFileSync(file);
 
-  const parsed = CDF.file(file, 'r');
+  const parsed = new CDF.File(file, 'r');
   res.json(parsed);
 
 });

@@ -1,58 +1,62 @@
-var http = require('http');
-var createError = require('http-errors');
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
+const path = require('path');
 
-const webpack = require('webpack');
-const webpackDevMiddleware = require('webpack-dev-middleware');
-const config = require('./webpack.config.js');
-const compiler = webpack(config);
+const state = {
+  server: null,
+  sockets: [],
+};
 
-var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
+function start() {
+  state.server = require('./server')().listen(3000, () => {
+    console.log('Started on 3000');
+  });
+  state.server.on('connection', (socket) => {
+    console.log('Add socket', state.sockets.length + 1);
+    state.sockets.push(socket);
+  });
+}
 
-var app = express();
+function pathCheck(id) {
+  return (
+    id.startsWith(path.join(__dirname, 'routes')) ||
+    id.startsWith(path.join(__dirname, 'server.js'))
+  );
+}
 
-// view engine setup
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'hbs');
+function restart() {
+  // clean the cache
+  Object.keys(require.cache).forEach((id) => {
+    if (pathCheck(id)) {
+      console.log('Reloading', id);
+      delete require.cache[id];
+    }
+  });
 
-app.use(logger('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
+  state.sockets.forEach((socket, index) => {
+    console.log('Destroying socket', index + 1);
+    if (socket.destroyed === false) {
+      socket.destroy();
+    }
+  });
 
-console.log(config.output.publicPath);
-app.use(webpackDevMiddleware(compiler, {
-  publicPath: config.output.publicPath
-}));
+  state.sockets = [];
 
-app.use(express.static(path.join(__dirname, 'public')));
+  state.server.close(() => {
+    console.log('Server is closed');
+    console.log('\n----------------- restarting -------------');
+    start();
+  });
+}
 
-app.use('/', indexRouter);
-app.use('/users', usersRouter);
+start();
 
-// catch 404 and forward to error handler
-app.use(function(req, res, next) {
-  next(createError(404));
+const chokidar = require('chokidar');
+chokidar.watch('./routes').on('all', (event, at) => {
+  if (event === 'add') {
+    console.log('Watching for', at);
+  }
+
+  if (event === 'change') {
+    console.log('Changes at', at);
+    restart();
+  }
 });
-
-// error handler
-app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
-
-  // render the error page
-  res.status(err.status || 500);
-  res.render('error');
-});
-
-var server = http.createServer(app);
-server.listen(process.env.PORT || 3000, function() {
-  console.log("Listening on %j", server.address());
-});
-
-module.exports = app;

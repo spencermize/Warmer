@@ -84,6 +84,6 @@ module.exports = {
 		new webpack.ProvidePlugin({
 			'$': 'jquery',
 			'Handlebars': 'handlebars'
-		})		
+		})			
 	]
   };

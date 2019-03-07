@@ -3,6 +3,7 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
+var compression = require('compression')
 
 const webpack = require('webpack');
 const webpackDevMiddleware = require('webpack-dev-middleware');
@@ -19,12 +20,12 @@ module.exports = function () {
   app.set('views', path.join(__dirname, 'views'));
   app.set('view engine', 'hbs');
 
+  app.use(compression());
   app.use(logger('dev'));
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
   app.use(cookieParser());
 
-  console.log(config.output.publicPath);
   app.use(webpackDevMiddleware(compiler, {
     publicPath: config.output.publicPath
   }));

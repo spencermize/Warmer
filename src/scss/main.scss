@@ -1,1 +1,6 @@
 @import "variables";
+
+html,body,#map{
+	min-height: 100vh;
+	min-width: 100vw;
+}

@@ -50,7 +50,7 @@ function restart() {
 start();
 
 const chokidar = require('chokidar');
-chokidar.watch('./routes').on('all', (event, at) => {
+chokidar.watch(['./routes','./server.js']).on('all', (event, at) => {
   if (event === 'add') {
     console.log('Watching for', at);
   }

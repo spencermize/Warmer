@@ -4,16 +4,16 @@ import 'bootstrap';
 import tinygradient from 'tinygradient';
 import TinyDatePicker from 'tiny-date-picker';
 import grid2geojson from 'grid2geojson';
-import * as topojson from 'topojson';
 import L from 'leaflet';
-import './L.TopoJSON.js';
 import '../../node_modules/leaflet-providers/leaflet-providers.js';
 import 'leaflet.vectorgrid';
+import './leafletExport.js';
 
 var map,layer,min,max;
 $(async function(){
 	TinyDatePicker('input.date',{
-		min: '1/1/1700'
+		min: '1/1/1750',
+		max: '11/30/2018'
 	}).on('select',async function(_,dp){
 		var d = new Date(dp.state.selectedDate);
 		d = `${d.getFullYear()}/${d.getMonth() + 1}`;
@@ -32,12 +32,18 @@ $(async function(){
 
 async function initMap(){
 	map = L.map('map',{
-		center: [0,0],
-		zoom: 2,
+		center: [20,0],
+		zoom: 2.5,
+		minZoom: 2.5,
+		zoomSnap: 0.25,
 		attributionControl: false
 	});
 	L.control.scale().addTo(map);
 	L.tileLayer.provider('CartoDB.Positron').addTo(map);
+
+	map.on('layeradd',function(){
+		loading(false);
+	});
 }
 async function loadMap(date){
 	loading(true);
@@ -48,21 +54,13 @@ async function loadMap(date){
 	}
 
 	$.getJSON(`/api/netcdf/temperature/${date}/geojson`,async function(data){
-		var start = performance.now();
-		var t0 = performance.now();
 		var geo = grid2geojson.toGeoJSON(data.lat,data.lng,data.data,false);
-		var t1 = performance.now();
-		console.log(`Conversion to GeoJSON took ${t1 - t0} milliseconds.`);
 		const diff = max + Math.abs(min);
 
-		t0 = performance.now();
 		geo.features = _.filter(geo.features,function(o){
 			return o.properties.value;
 		});
-		t1 = performance.now();
-		console.log(`Removal of empty grid items took ${t1 - t0} milliseconds.`);
 
-		t0 = performance.now();
 		layer = L.vectorGrid.slicer(geo,{
 			rendererFactory: L.canvas.tile,
 			vectorTileLayerStyles: {
@@ -80,57 +78,26 @@ async function loadMap(date){
 				}
 			}
 		});
-		t1 = performance.now();
-		console.log(`Vector Grid slice took ${t1 - t0} milliseconds.`);
-
-		//t0 = performance.now();
-		//layer = L.geoJSON(geo,{
-		//style: function(feature){
-		//const percent = (Math.abs(min) + feature.properties.value) / diff;
-		//return {
-		//fillColor: gradient.rgbAt(percent),
-		//stroke: false,
-		//fillOpacity: 0.85
-		//};
-		//}
-		//});
-
-		//t0 = performance.now();
-		//var topo = topojson.topology({ foo: geo },0.001);
-		//t1 = performance.now();
-		//console.log(`Conversion to topo took ${t1 - t0} milliseconds.`);
-
-		//t0 = performance.now();
-		//topo = topojson.presimplify(topo);
-		//topo = topojson.simplify(topo,0.1);
-		//t1 = performance.now();
-		//console.log(`Simplification of topo took ${t1 - t0} milliseconds.`);
-
-		//t0 = performance.now();
-		//layer = new L.TopoJSON(topo,{
-		//style: function(feature){
-		//const percent = (Math.abs(min) + feature.properties.value) / diff;
-		//return {
-		//fillColor: gradient.rgbAt(percent),
-		//stroke: false,
-		//fillpacity: 0.85
-		//};
-		//}
-		//});
-		//t1 = performance.now();
-		//console.log(`Creation of map layer took ${t1 - t0} milliseconds.`);
-
-		t0 = performance.now();
 		layer.addTo(map);
-		t1 = performance.now();
-		console.log(`Addition of map layer took ${t1 - t0} milliseconds.`);
-
-		var end = performance.now();
-		console.log(`Total: ${end - start} milliseconds.`);
-		loading(false);
 	});
 }
 
+$('a.download').on('click',function(e){
+	e.preventDefault();
+	download();
+});
+function download(){
+	var downloadOptions = {
+		container: map._container,
+		exclude: ['.leaflet-control-zoom','.leaflet-control-attribution'],
+		format: 'image/png',
+		fileName: 'Map.png'
+	};
+	var promise = map.downloadExport(downloadOptions);
+	promise.then(function(result){
+		return result;
+	});
+}
 function loading(yes = true){
 	$('body').toggleClass('loading',yes);
 }

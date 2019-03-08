@@ -17,6 +17,7 @@
     "cookie-parser": "~1.4.3",
     "debug": "~2.6.9",
     "express": "~4.16.0",
+    "express-hbs": "^2.0.2",
     "georaster": "^0.4.2",
     "grid2geojson": "^1.1.0",
     "hbs": "~4.0.1",
@@ -30,7 +31,9 @@
     "netcdf4": "^0.4.1",
     "netcdfjs": "^0.7.0",
     "popper.js": "^1.14.7",
-    "style-loader": "^0.23.1"
+    "style-loader": "^0.23.1",
+    "tiny-date-picker": "^3.2.8",
+    "tinygradient": "^1.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.3.4",

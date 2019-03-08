@@ -4,9 +4,11 @@ var assert = require('chai').assert;
 var argv = require('yargs').argv;
 
 var paths = glob.sync('./src/js/**/*.js');
+paths = paths.concat(glob.sync('./routes/**/*.js'));
 paths = paths.concat('./src/js/main.js');
 paths = paths.concat('./test/*.js');
 paths = paths.concat('./app.js');
+paths = paths.concat('./server.js');
 
 const engine = new CLIEngine({
 	envs: ['node','mocha'],

@@ -1,6 +1,21 @@
 @import "variables";
+@import "~tiny-date-picker/tiny-date-picker";
 
 html,body,#map{
 	min-height: 100vh;
 	min-width: 100vw;
+	overflow: hidden;
+}
+.dp-modal,.date-holder,.alert{
+	z-index: 1000;
+}
+.alert{
+	transition: .5s all;
+	margin-bottom: 35vh;
+}
+.spinner-holder{
+	display: none;
+}
+.loading .spinner-holder{
+	display: block;
 }

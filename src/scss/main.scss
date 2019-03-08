@@ -19,3 +19,11 @@ html,body,#map{
 .loading .spinner-holder{
 	display: block;
 }
+
+.leaflet-layer{
+	transition: 1s all;
+	opacity: 0 !important;
+}
+.leaflet-layer:first-child,.leaflet-layer.active{
+	opacity: 1 !important;
+}

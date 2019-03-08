@@ -9,22 +9,18 @@ import '../../node_modules/leaflet-providers/leaflet-providers.js';
 import 'leaflet.vectorgrid';
 import './leafletExport.js';
 
-var map,layer,min,max;
+var map,min,max,rotate;
+var layers = [];
 $(async function(){
-	TinyDatePicker('input.date',{
+	var options = {
 		min: '1/1/1750',
-		max: '11/30/2018'
-	}).on('select',async function(_,dp){
-		var d = new Date(dp.state.selectedDate);
-		d = `${d.getFullYear()}/${d.getMonth() + 1}`;
-		$('input.date').val(d);
-		d = await $.getJSON(`/api/netcdf/time/${d}`);
-		if (d >= 0){
-			loadMap(d);
-		} else {
-			err('Sorry, date was out of range.');
+		max: '11/30/2018',
+		format: function(date){
+			return `${date.getFullYear()}/${date.getMonth() + 1}`;
 		}
-	});
+	}
+	TinyDatePicker('input.date-first',options);
+	TinyDatePicker('input.date-last',options);
 	initMap();
 	max = await $.getJSON('/api/netcdf/temperature/max');
 	min = await $.getJSON('/api/netcdf/temperature/min');
@@ -45,12 +41,18 @@ async function initMap(){
 		loading(false);
 	});
 }
-async function loadMap(date){
-	loading(true);
+
+function clearMap(){
+	layers.forEach(function(layer){
+		map.removeLayer(layer);
+	});
+	clearInterval(rotate);
+}
+async function loadMap(date,clear){
 	const gradient = tinygradient(['rgb(0,255,0','rgb(255,0,0)']);
 
-	if (layer){
-		map.removeLayer(layer);
+	if (layers.length > 0 && clear){
+		clearMap();
 	}
 
 	$.getJSON(`/api/netcdf/temperature/${date}/geojson`,async function(data){
@@ -61,7 +63,7 @@ async function loadMap(date){
 			return o.properties.value;
 		});
 
-		layer = L.vectorGrid.slicer(geo,{
+		layers.push(new L.vectorGrid.slicer(geo,{ //eslint-disable-line new-cap
 			rendererFactory: L.canvas.tile,
 			vectorTileLayerStyles: {
 				sliced: function(feature){
@@ -77,14 +79,39 @@ async function loadMap(date){
 					};
 				}
 			}
-		});
-		layer.addTo(map);
+		}));
+		layers[layers.length - 1].addTo(map);
 	});
 }
 
-$('a.download').on('click',function(e){
-	e.preventDefault();
+$('button.download').on('click',function(e){
 	download();
+});
+$('button.load').on('click',async function(){
+	var start = $('.date-first').val();
+	var end = $('.date-last').val();
+	var dStart = start ? await $.getJSON(`/api/netcdf/time/${start}`) : null;
+	var dEnd = await $.getJSON(`/api/netcdf/time/${end}`);
+	if (dEnd >= 0 && !dStart){
+		loadMap(dEnd,true);
+	} else if (dStart >= 0 && dEnd >= 0){
+		for (var i = dStart; i <= dEnd; i++){
+			loading(true);
+			loadMap(i);
+		}
+		rotate = setInterval(function(){
+			var layers = $('#map .leaflet-layer');
+			var curr = $('#map .leaflet-layer.active').length ? $('#map .leaflet-layer.active') : layers.first();
+			if (curr.next()){
+				curr.next().addClass('active');
+			} else {
+				layers.first().addClass('active');
+			}
+			curr.removeClass('active');			
+		},1000);
+	} else {
+		err('Sorry, date was out of range.');
+	}
 });
 function download(){
 	var downloadOptions = {

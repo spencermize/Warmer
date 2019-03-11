@@ -1,3 +1,5 @@
+//https://github.com/Flexberry/Leaflet.Export/blob/master/leaflet_export.js
+
 import L from 'leaflet';
 import html2canvas from 'html2canvas';
 (function(L){
@@ -185,7 +187,8 @@ import html2canvas from 'html2canvas';
 				}
 
 				return html2canvas(container,{
-					useCORS: true
+					useCORS: true,
+					logging: false
 				}).then(afterRender).then(
 					function(canvas){
 						//Show excluded elements.

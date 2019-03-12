@@ -8,6 +8,7 @@ const parsed = new CDF.File(file,'r');
 const max = _.memoize(getMax);
 const min = _.memoize(getMin);
 const whole = _.memoize(getWholeSet);
+const globe = _.memoize(getGlobe);
 
 router.get('/netcdf/variables',function(req,res,_next){
 	res.json(parsed.root.variables);
@@ -59,10 +60,19 @@ function getGlobe(vari,date){
 	var lngSize = _.find(vari.dimensions,{ 'name': 'longitude' }).length;
 	var latSize = _.find(vari.dimensions,{ 'name': 'latitude' }).length;
 	var data = [];
+	var d = parsed.root.variables.time.read(date);
+	var month = Math.floor(d % 1 * 12);
+	var year = Math.floor(d);
+
 	for (var lats = 0; lats < latSize - 1; lats++){
 		data.push(vari.readSlice(date,1,lats,1,0,lngSize));
 	}
-	return data;
+	return {
+		data: data,
+		meta: {
+			date: `${year}/${month + 1}`
+		}
+	};
 }
 
 function getGeoJSON(vari,date){
@@ -71,7 +81,10 @@ function getGeoJSON(vari,date){
 	const lat = _.toArray(vars.latitude.readSlice(0,vars.latitude.dimensions[0].length));
 	const lng = _.toArray(vars.longitude.readSlice(0,vars.longitude.dimensions[0].length));
 
-	return { lat: lat,lng: lng,data: data };
+	return {
+		data: { lat: lat,lng: lng,data: data.data },
+		meta: data.meta
+	};
 }
 
 function getMax(vari){

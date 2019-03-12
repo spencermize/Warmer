@@ -11,8 +11,10 @@ import 'leaflet.heat';
 import '../../node_modules/leaflet.glify/glify.js';
 import './leafletExport.js';
 
-var map,min,max,rotate,diff;
+var map,min,max,rotate,diff,webGL;
 var layers = [];
+var layerBuffer = [];
+const gradient = tinygradient(['rgb(0,0,255)','rgb(200,200,200)','rgb(255,0,0)']);
 $(async function(){
 	var options = {
 		min: '1/1/1750',
@@ -51,20 +53,53 @@ function clearMap(){
 	});
 	clearInterval(rotate);
 }
+
+function buff(){
+	loading(true);
+	setTimeout(function(){
+		loading(false);
+	},5000);
+}
 async function loadMap(date,type,clear){
-	if (layers.length > 0 && clear){
+	if (clear){
 		clearMap();
 	}
 
-	await $.getJSON(`/api/netcdf/temperature/${date}/geojson`,async function(data){
+	if (!layerBuffer[date]){
+		buff();
+		await $.getJSON(`/api/netcdf/temperature/${date}/geojson`,async function(data){
+			var layer;
+			if (type === 'poly' || type === 'pointsGL'){
+				layer = data.data;
+			} else {
+				layer = setupGeo(data.data);
+			}
+			layerBuffer[date] = {
+				layer: layer,
+				meta: data.meta
+			};
+		});
+	}
+}
+
+function renderMap(date,type){
+	const layer = layerBuffer[date];
+	if (!layer){
+		buff();
+	} else {
 		if (type === 'poly'){
-			addPolyLayer(data);
-		} else if (type === 'polyGL'){
-			addPolyGLLayer(data);
+			addPolyLayer(layer);
+		} else if (type === 'pointsGL'){
+			addPointGLLayer(layer);
 		} else {
-			addPointGLLayer(data);
+			if (!webGL){
+				addPolyGLLayer(layer.layer);
+			} else {
+				updateGLLayer(layer.layer);
+			}
 		}
-	});
+		updateMeta(layer.meta);
+	}
 }
 
 $('button.download').on('click',function(_e){
@@ -74,35 +109,37 @@ $('.load').on('click',function(e){
 	load($(e.target).data('type'));
 });
 
+function updateMeta(meta){
+	$('#meta .date').text(meta.date);
+}
 async function load(type){
 	var start = $('.date-first').val();
 	var end = $('.date-last').val();
 	var dStart = start ? await $.getJSON(`/api/netcdf/time/${start}`) : null;
 	var dEnd = await $.getJSON(`/api/netcdf/time/${end}`);
+
 	if (dEnd && !dStart){
 		await loadMap(dEnd,type,true);
-		$('#map .leaflet-layer:not(:first)').first().addClass('active');
+		renderMap(dEnd);
 	} else if (dStart && dEnd){
-		for (var i = dStart; i <= dEnd; i++){
-			loading(true);
-			await loadMap(i,type);
+		var i = dStart;
+		for (i; i <= dEnd; i++){
+			loadMap(i,type,true);
 		}
+
+		i = dStart;
 		rotate = setInterval(function(){
-			var layers = $('#map .leaflet-layer:not(:first)');
-			var curr = $('#map .leaflet-layer.active').length ? $('#map .leaflet-layer.active') : layers.first();
-			if (curr.next()){
-				curr.next().addClass('active');
-			} else {
-				layers.first().addClass('active');
+			renderMap(i,type);
+			i++;
+			if (i > dEnd){
+				i = dStart;
 			}
-			curr.removeClass('active');
-		},750);
+		},500);
 	} else {
 		err('Sorry, date was out of range.');
 	}
 }
 function addPointGLLayer(data){
-	var gradient = tinygradient(['rgb(0,255,0)','rgb(255,0,0)']);
 	var layer = [];
 	for (var lat = 0; lat < data.lat.length - 1; lat++){
 		for (var lng = 0; lng < data.lng.length - 1; lng++){
@@ -128,7 +165,6 @@ function addPointGLLayer(data){
 	});
 }
 function addPolyLayer(data){
-	const gradient = tinygradient(['rgb(0,255,0)','rgb(255,0,0)']);
 	var geo = grid2geojson.toGeoJSON(data.lat,data.lng,data.data,false);
 
 	geo.features = _.filter(geo.features,function(o){
@@ -155,15 +191,8 @@ function addPolyLayer(data){
 	layers[layers.length - 1].addTo(map);
 }
 
-function addPolyGLLayer(data){
-	const gradient = tinygradient(['rgb(0,255,0)','rgb(255,0,0)']);
-	var geo = grid2geojson.toGeoJSON(data.lat,data.lng,data.data,false);
-
-	geo.features = _.filter(geo.features,function(o){
-		return o.properties.value;
-	});
-
-	L.glify.shapes({
+function addPolyGLLayer(geo){
+	webGL = L.glify.shapes({
 		map: map,
 		data: geo,
 		color: function(_i,feature){
@@ -177,8 +206,24 @@ function addPolyGLLayer(data){
 		opacity: 0.85,
 		preserveDrawingBuffer: true
 	});
+
+	return geo;
+}
+function updateGLLayer(geo){
+	webGL.settings.data = geo;
+	webGL.setup().render();
+	return geo;
 }
 
+function setupGeo(data){
+	var geo = grid2geojson.toGeoJSON(data.lat,data.lng,data.data,false);
+
+	geo.features = _.filter(geo.features,function(o){
+		return o.properties.value;
+	});
+
+	return geo;
+}
 function download(){
 	var downloadOptions = {
 		container: map._container,

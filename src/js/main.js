@@ -4,7 +4,7 @@ import 'bootstrap';
 import tinygradient from 'tinygradient';
 import TinyDatePicker from 'tiny-date-picker';
 import grid2geojson from 'grid2geojson';
-import dexie from 'dexie';
+import Dexie from 'dexie';
 import L from 'leaflet';
 import '../../node_modules/leaflet-providers/leaflet-providers.js';
 import 'leaflet.vectorgrid';
@@ -12,10 +12,12 @@ import 'leaflet.heat';
 import '../../node_modules/leaflet.glify/glify.js';
 import './leafletExport.js';
 
-
 var map,min,max,rotate,diff,webGL;
 var layers = [];
-var layerBuffer = [];
+const db = new Dexie('Cache');
+db.version(1).stores({
+	layers: '++id,date,layer'
+});
 const gradient = tinygradient(['rgb(0,0,255)','rgb(200,200,200)','rgb(255,0,0)']);
 $(async function(){
 	var options = {
@@ -67,40 +69,61 @@ async function loadMap(date,type,clear){
 		clearMap();
 	}
 
-	if (!layerBuffer[date]){
-		buff();
+	if (await db.layers.where({ date: date }).count() === 0){
 		await $.getJSON(`/api/netcdf/temperature/${date}/geojson`,async function(data){
 			var layer;
 			if (type === 'poly' || type === 'pointsGL'){
-				layer = data.data;
+				layer = data[0].data;
 			} else {
-				layer = setupGeo(data.data);
+				layer = setupGeo(data[0].data);
 			}
-			layerBuffer[date] = {
+			await db.layers.add({
 				layer: layer,
-				meta: data.meta
-			};
+				date: Number(data[0].index),
+				meta: data[0].meta
+			});
 		});
 	}
 }
+async function loadMaps(sDate,eDate,type,clear){
+	if (clear){
+		clearMap();
+	}
+	await $.getJSON(`/api/netcdf/temperature/${sDate}/${eDate}/geojson`,async function(data){
+		for (var i = 0; i <= data.length - 1; i++){
+			var layer;
+			if (type === 'poly' || type === 'pointsGL'){
+				layer = data[i].data;
+			} else {
+				layer = setupGeo(data[i].data);
+			}
+			await db.layers.add({
+				layer: layer,
+				date: Number(data[i].index),
+				meta: data[i].meta
+			});
+		}
+	});
+}
 
-function renderMap(date,type){
-	const layer = layerBuffer[date];
+async function renderMap(date,type,keep = true){
+	const layer = await db.layers.where({ date: date }).first();
 	if (!layer){
-		buff();
+		return false;
 	} else {
 		if (type === 'poly'){
-			addPolyLayer(layer);
+			addPolyLayer(layer.layer);
 		} else if (type === 'pointsGL'){
-			addPointGLLayer(layer);
+			addPointGLLayer(layer.layer);
 		} else {
 			if (!webGL){
-				addPolyGLLayer(layer.layer);
+				addPolyGLLayer(layer.layer,keep);
 			} else {
 				updateGLLayer(layer.layer);
 			}
 		}
 		updateMeta(layer.meta);
+		return true;
 	}
 }
 
@@ -121,14 +144,13 @@ async function load(type){
 	var dEnd = await $.getJSON(`/api/netcdf/time/${end}`);
 
 	if (dEnd && !dStart){
+		buff();
 		await loadMap(dEnd,type,true);
 		renderMap(dEnd);
 	} else if (dStart && dEnd){
-		var i = dStart;
-		for (i; i <= dEnd; i++){
-			loadMap(i,type,true);
-		}
+		loading(true);
 		loop(dStart,dStart,dEnd,type);
+		await loadMaps(dStart,dEnd,type,true);
 	} else {
 		err('Sorry, date was out of range.');
 	}
@@ -136,9 +158,13 @@ async function load(type){
 
 function loop(current,start,end,type){
 	var i = current;
-	setTimeout(function(){
-		renderMap(i,type);
-		i++;
+	setTimeout(async function(){
+		var rendered = await renderMap(i,type,false);
+		if (rendered){ //only increment if we successfully rendered updated map
+			i++;
+		} else {
+			buff();
+		}
 		if (i > end){
 			i = start;
 		}
@@ -150,7 +176,7 @@ function addPointGLLayer(data){
 	for (var lat = 0; lat < data.lat.length - 1; lat++){
 		for (var lng = 0; lng < data.lng.length - 1; lng++){
 			const val = data.data[lat][lng];
-			if (val != null){
+			if (val !== null && val !== 0){
 				var percent = (Math.abs(min) + val) / diff;
 				layer.push([data.lat[lat],data.lng[lng],percent]);
 			}
@@ -197,12 +223,12 @@ function addPolyLayer(data){
 	layers[layers.length - 1].addTo(map);
 }
 
-function addPolyGLLayer(geo){
+function addPolyGLLayer(geo,keep){
 	webGL = L.glify.shapes({
 		map: map,
 		data: geo,
 		color: function(_i,feature){
-			const percent = (Math.abs(min) + feature.properties.value) / diff;
+			const percent = (Math.abs(min) + Number(feature.properties.value)) / diff;
 			var col = gradient.rgbAt(percent).toRgb();
 			col.r = col.r / 255;
 			col.g = col.g / 255;
@@ -210,7 +236,7 @@ function addPolyGLLayer(geo){
 			return col;
 		},
 		opacity: 0.85,
-		preserveDrawingBuffer: true
+		preserveDrawingBuffer: keep
 	});
 
 	return geo;
@@ -225,7 +251,7 @@ function setupGeo(data){
 	var geo = grid2geojson.toGeoJSON(data.lat,data.lng,data.data,false);
 
 	geo.features = _.filter(geo.features,function(o){
-		return o.properties.value;
+		return o.properties.value !== 0 && o.properties.value !== null;
 	});
 
 	return geo;

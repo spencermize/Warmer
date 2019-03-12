@@ -42,6 +42,9 @@ router.get('/netcdf/:var/dimensions',function(req,res,_next){
 router.get('/netcdf/:var/:date/geojson',function(req,res,_next){
 	res.json(getGeoJSON(req.params.var,req.params.date));
 });
+router.get('/netcdf/:var/:sDate/:eDate/geojson',function(req,res,_next){
+	res.json(getGeoJSON(req.params.var,req.params.sDate,req.params.eDate));
+});
 router.get('/netcdf/:var/max',function(req,res,_next){
 	res.json(max(req.params.var));
 });
@@ -65,7 +68,13 @@ function getGlobe(vari,date){
 	var year = Math.floor(d);
 
 	for (var lats = 0; lats < latSize - 1; lats++){
-		data.push(vari.readSlice(date,1,lats,1,0,lngSize));
+		data.push(_.map(vari.readSlice(date,1,lats,1,0,lngSize),function(e){
+			if (e){
+				return Number(e).toFixed(3);
+			} else {
+				return 0;
+			}
+		}));
 	}
 	return {
 		data: data,
@@ -75,16 +84,22 @@ function getGlobe(vari,date){
 	};
 }
 
-function getGeoJSON(vari,date){
-	const data = getGlobe(vari,date);
-	const vars = parsed.root.variables;
-	const lat = _.toArray(vars.latitude.readSlice(0,vars.latitude.dimensions[0].length));
-	const lng = _.toArray(vars.longitude.readSlice(0,vars.longitude.dimensions[0].length));
+function getGeoJSON(vari,date,eDate){
+	var ret = [];
+	eDate = eDate || date;
+	for (var i = date; i <= eDate; i++){
+		const data = getGlobe(vari,i);
+		const vars = parsed.root.variables;
+		const lat = _.toArray(vars.latitude.readSlice(0,vars.latitude.dimensions[0].length));
+		const lng = _.toArray(vars.longitude.readSlice(0,vars.longitude.dimensions[0].length));
 
-	return {
-		data: { lat: lat,lng: lng,data: data.data },
-		meta: data.meta
-	};
+		ret.push({
+			data: { lat: lat,lng: lng,data: data.data },
+			index: i,
+			meta: data.meta
+		});
+	}
+	return ret;
 }
 
 function getMax(vari){

@@ -4,12 +4,14 @@ import 'bootstrap';
 import tinygradient from 'tinygradient';
 import TinyDatePicker from 'tiny-date-picker';
 import grid2geojson from 'grid2geojson';
+import dexie from 'dexie';
 import L from 'leaflet';
 import '../../node_modules/leaflet-providers/leaflet-providers.js';
 import 'leaflet.vectorgrid';
 import 'leaflet.heat';
 import '../../node_modules/leaflet.glify/glify.js';
 import './leafletExport.js';
+
 
 var map,min,max,rotate,diff,webGL;
 var layers = [];
@@ -126,18 +128,22 @@ async function load(type){
 		for (i; i <= dEnd; i++){
 			loadMap(i,type,true);
 		}
-
-		i = dStart;
-		rotate = setInterval(function(){
-			renderMap(i,type);
-			i++;
-			if (i > dEnd){
-				i = dStart;
-			}
-		},500);
+		loop(dStart,dStart,dEnd,type);
 	} else {
 		err('Sorry, date was out of range.');
 	}
+}
+
+function loop(current,start,end,type){
+	var i = current;
+	setTimeout(function(){
+		renderMap(i,type);
+		i++;
+		if (i > end){
+			i = start;
+		}
+		loop(i,start,end,type);
+	},$('#speed').val());
 }
 function addPointGLLayer(data){
 	var layer = [];

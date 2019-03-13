@@ -19,6 +19,7 @@ db.version(1).stores({
 	layers: '++id,date,layer'
 });
 const gradient = tinygradient(['rgb(0,0,255)','rgb(200,200,200)','rgb(255,0,0)']);
+const grad = _.memoize(gradient.rgbAt);
 $(async function(){
 	var options = {
 		min: '1/1/1750',
@@ -55,7 +56,16 @@ function clearMap(){
 	layers.forEach(function(layer){
 		map.removeLayer(layer);
 	});
-	clearInterval(rotate);
+	if (webGL){
+		webGL.settings.data = setupGeo({
+			data: [],
+			lat: [],
+			lng: []
+		});
+		webGL.setup().render();
+		clearTimeout(rotate);
+	}
+
 }
 
 function buff(){
@@ -159,7 +169,7 @@ async function load(type){
 
 function loop(current,start,end,type){
 	var i = current;
-	setTimeout(async function(){
+	rotate = setTimeout(async function(){
 		var rendered = await renderMap(i,type,false);
 		if (rendered){ //only increment if we successfully rendered updated map
 			i++;
@@ -209,7 +219,7 @@ function addPolyLayer(data){
 		vectorTileLayerStyles: {
 			sliced: function(feature){
 				const percent = (Math.abs(min) + feature.value) / diff;
-				var col = gradient.rgbAt(percent).toHexString();
+				var col = grad(percent).toHexString();
 				return {
 					fillColor: col,
 					fill: true,
@@ -225,16 +235,26 @@ function addPolyLayer(data){
 }
 
 function addPolyGLLayer(geo,keep){
+	var m = Math.abs(min);
 	webGL = L.glify.shapes({
 		map: map,
 		data: geo,
 		color: function(_i,feature){
-			const percent = (Math.abs(min) + Number(feature.properties.value)) / diff;
-			var col = gradient.rgbAt(percent).toRgb();
-			col.r = col.r / 255;
-			col.g = col.g / 255;
-			col.b = col.b / 255;
-			return col;
+			if (feature.properties.value){
+				const percent = (m + feature.properties.value) / diff;
+				var col = gradient.rgbAt(percent).toRgb();
+				col.r = col.r / 255;
+				col.g = col.g / 255;
+				col.b = col.b / 255;
+				return col;
+			} else {
+				return {
+					r: 200,
+					g: 200,
+					b: 200
+				};
+			}
+
 		},
 		opacity: 0.85,
 		preserveDrawingBuffer: keep

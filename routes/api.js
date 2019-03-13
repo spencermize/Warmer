@@ -8,7 +8,7 @@ const obs = new PerformanceObserver((items) => {
 });
 obs.observe({ entryTypes: ['measure'] });
 const CDF = require('netcdf4');
-const file = './nc/Complete_TAVG_LatLong1.nc';
+const file = './nc/Land_and_Ocean_Alternate_LatLong1.nc';
 performance.mark('CDFA');
 const parsed = new CDF.File(file,'r');
 performance.mark('CDFB');
@@ -79,18 +79,19 @@ function getGlobe(vari,date){
 	var year = Math.floor(d);
 
 	for (var lats = 0; lats < latSize - 1; lats++){
-		data.push(vari.readSlice(date,1,lats,1,0,lngSize).map(e => {
+		var globe = _.map(vari.readSlice(date,1,lats,1,0,lngSize),e => {
 			if (e){
-				return Number(e).toFixed(3);
+				return Math.round(e * 1e1) / 1e1;
 			} else {
 				return 0;
 			}
-		}));
+		});
+		data.push(_.toArray(globe));
 	}
 	return {
 		data: data,
 		meta: {
-			date: `${year}/${month + 1}`
+			date: `${year}/${month}`
 		}
 	};
 }

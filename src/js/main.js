@@ -7,9 +7,9 @@ import grid2geojson from 'grid2geojson';
 import Dexie from 'dexie';
 import L from 'leaflet';
 import '../../node_modules/leaflet-providers/leaflet-providers.js';
-import 'leaflet.vectorgrid';
-import 'leaflet.heat';
-import '../../node_modules/leaflet.glify/glify.js';
+//import 'leaflet.vectorgrid';
+//import 'leaflet.heat';
+import '../../../Leaflet.glify/glify.js';
 import './leafletExport.js';
 
 var map,min,max,rotate,diff,webGL;
@@ -65,7 +65,6 @@ function clearMap(){
 		webGL.setup().render();
 		clearTimeout(rotate);
 	}
-
 }
 
 function buff(){
@@ -132,7 +131,7 @@ async function renderMap(date,type,keep = true){
 				updateGLLayer(layer.layer);
 			}
 		}
-		updateMeta(layer.meta);
+		addMeta(layer.meta);
 		return true;
 	}
 }
@@ -146,6 +145,13 @@ $('.load').on('click',function(e){
 
 function updateMeta(meta){
 	$('#meta .date').text(meta.date);
+}
+function addMeta(meta){
+	Object.keys(meta).forEach(function(el){
+		var metaEl = $('#meta');
+		metaEl.find(`.${el}`).remove();
+		metaEl.append(`<div class='${el}'><strong>${el}:</strong> ${meta[el]}</div>`);
+	});
 }
 async function load(type){
 	loading(true);
@@ -254,7 +260,9 @@ function addPolyGLLayer(geo,keep){
 					b: 200
 				};
 			}
-
+		},
+		click: function(e,feature){
+			addMeta({ 'Variance': feature.properties.value });
 		},
 		opacity: 0.85,
 		preserveDrawingBuffer: keep

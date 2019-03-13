@@ -81,7 +81,7 @@ function getGlobe(vari,date){
 	for (var lats = 0; lats < latSize - 1; lats++){
 		var globe = _.map(vari.readSlice(date,1,lats,1,0,lngSize),e => {
 			if (e){
-				return Math.round(e * 1e1) / 1e1;
+				return Math.round(e * 1e5) / 1e5;
 			} else {
 				return 0;
 			}

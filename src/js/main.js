@@ -138,6 +138,7 @@ function updateMeta(meta){
 	$('#meta .date').text(meta.date);
 }
 async function load(type){
+	loading(true);
 	var start = $('.date-first').val();
 	var end = $('.date-last').val();
 	var dStart = start ? await $.getJSON(`/api/netcdf/time/${start}`) : null;

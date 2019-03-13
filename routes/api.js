@@ -1,10 +1,18 @@
 var _ = require('lodash');
 var express = require('express');
 var router = express.Router();
-
+const { PerformanceObserver,performance } = require('perf_hooks');
+const obs = new PerformanceObserver((items) => {
+	console.log(`${items.getEntries()[0].name}: ${items.getEntries()[0].duration}`);
+	performance.clearMarks();
+});
+obs.observe({ entryTypes: ['measure'] });
 const CDF = require('netcdf4');
 const file = './nc/Complete_TAVG_LatLong1.nc';
+performance.mark('CDFA');
 const parsed = new CDF.File(file,'r');
+performance.mark('CDFB');
+performance.measure('CDF Load','CDFA','CDFB');
 const max = _.memoize(getMax);
 const min = _.memoize(getMin);
 const whole = _.memoize(getWholeSet);
@@ -56,7 +64,10 @@ router.get('/netcdf/:var/:date/',function(req,res,_next){
 });
 
 function getAllTimes(){
-	return parsed.root.variables.time.readSlice(0,parsed.root.variables.time.dimensions[0].length);
+	performance.mark('TIMESLICEA');
+	const ret = parsed.root.variables.time.readSlice(0,parsed.root.variables.time.dimensions[0].length);
+	performance.mark('TIMESLICEB');
+	return ret;
 }
 function getGlobe(vari,date){
 	vari = parsed.root.variables[vari];
@@ -68,7 +79,7 @@ function getGlobe(vari,date){
 	var year = Math.floor(d);
 
 	for (var lats = 0; lats < latSize - 1; lats++){
-		data.push(_.map(vari.readSlice(date,1,lats,1,0,lngSize),function(e){
+		data.push(vari.readSlice(date,1,lats,1,0,lngSize).map(e => {
 			if (e){
 				return Number(e).toFixed(3);
 			} else {
@@ -103,18 +114,39 @@ function getGeoJSON(vari,date,eDate){
 }
 
 function getMax(vari){
-	return _.max(whole(vari));
+	performance.mark('MAXA');
+	var ret = _.max(whole(vari));
+	performance.mark('MAXB');
+	performance.measure('Max','MAXA','MAXB');
+	return ret;
 }
 
 function getMin(vari){
-	return _.min(whole(vari));
+	performance.mark('MINA');
+	var ret = _.min(whole(vari));
+	performance.mark('MINB');
+	performance.measure('Min','MINA','MINB');
+	return ret;
 }
 
 function getWholeSet(vari){
+	performance.mark('VARIA');
 	vari = parsed.root.variables[vari];
+	performance.mark('VARIB');
+	performance.measure('Whole Vari','VARIA','VARIB');
+
+	performance.mark('SIZESA');
 	const dataSize = vari.dimensions.find(({ name }) => name === 'time').length;
 	const lngSize = vari.dimensions.find(({ name }) => name === 'longitude').length;
 	const latSize = vari.dimensions.find(({ name }) => name === 'latitude').length;
-	return vari.readSlice(0,dataSize,0,latSize,0,lngSize);
+	performance.mark('SIZESB');
+	performance.measure('Whole Sizes','SIZESA','SIZESB');
+
+	performance.mark('SLICEA');
+	var slice = vari.readSlice(0,dataSize,0,latSize,0,lngSize);
+	performance.mark('SLICEB');
+	performance.measure('Whole Slice','SLICEA','SLICEB');
+
+	return slice;
 }
 module.exports = router;

@@ -8,7 +8,7 @@ const obs = new PerformanceObserver((items) => {
 });
 obs.observe({ entryTypes: ['measure'] });
 const CDF = require('netcdf4');
-const file = './nc/Land_and_Ocean_Alternate_LatLong1.nc';
+const file = './nc/Complete_TAVG_LatLong1.nc';
 performance.mark('CDFA');
 const parsed = new CDF.File(file,'r');
 performance.mark('CDFB');
@@ -16,7 +16,6 @@ performance.measure('CDF Load','CDFA','CDFB');
 const max = _.memoize(getMax);
 const min = _.memoize(getMin);
 const whole = _.memoize(getWholeSet);
-const globe = _.memoize(getGlobe);
 
 router.get('/netcdf/variables',function(req,res,_next){
 	res.json(parsed.root.variables);

@@ -78,12 +78,7 @@ async function loadMap(date,type,clear){
 
 	if (await db.layers.where({ date: date }).count() === 0){
 		await $.getJSON(`/api/netcdf/temperature/${date}/geojson`,async function(data){
-			var layer;
-			if (type === 'poly' || type === 'pointsGL'){
-				layer = data[0].data;
-			} else {
-				layer = setupGeo(data[0].data);
-			}
+			var layer = data[0].data;
 			await db.layers.add({
 				layer: layer,
 				date: Number(data[0].index),
@@ -99,7 +94,7 @@ async function loadMaps(sDate,eDate,type,clear){
 	await $.getJSON(`/api/netcdf/temperature/${sDate}/${eDate}/geojson`,async function(data){
 		for (var i = 0; i <= data.length - 1; i++){
 			var layer;
-			if (type === 'poly' || type === 'pointsGL'){
+			if (type === 'pointsGL'){
 				layer = data[i].data;
 			} else {
 				layer = setupGeo(data[i].data);
@@ -119,12 +114,16 @@ async function renderMap(date,type,keep = true){
 		return false;
 	} else {
 		if (type === 'pointsGL'){
-			addPointGLLayer(layer.layer);
-		} else {
 			if (!webGL){
-				addPolyGLLayer(layer.layer,keep);
+				addPointGLLayer(layer.layer,keep);
 			} else {
 				updateGLLayer(layer.layer);
+			}
+		} else {
+			if (!webGL){
+				addPolyGLLayer(setupGeo(layer.layer),keep);
+			} else {
+				updateGLLayer(setupGeo(layer.layer);
 			}
 		}
 		addMeta(layer.meta);
@@ -169,6 +168,7 @@ async function load(type){
 function loop(current,start,end,type){
 	var i = current;
 	rotate = setTimeout(async function(){
+		var t0 = performance.now();
 		var rendered = await renderMap(i,type,false);
 		if (rendered){ //only increment if we successfully rendered updated map
 			i++;
@@ -178,6 +178,8 @@ function loop(current,start,end,type){
 		if (i > end){
 			i = start;
 		}
+		var t1 = performance.now();
+		addMeta({ 'Redraw': Math.round(t1 - t0) });
 		loop(i,start,end,type);
 	},$('#speed').val());
 }

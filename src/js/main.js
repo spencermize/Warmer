@@ -12,12 +12,12 @@ import './leafletExport.js';
 
 var map,min,max,rotate,diff,webGL;
 var layers = [];
+var cachedColors = [];
 const db = new Dexie('Cache');
 db.version(1).stores({
 	layers: '++id,date,layer'
 });
 const gradient = tinygradient(['rgb(0,0,255)','rgb(200,200,200)','rgb(255,0,0)']);
-const grad = _.memoize(gradient.rgbAt);
 $(async function(){
 	var options = {
 		min: '1/1/1750',
@@ -208,24 +208,22 @@ function addPointGLLayer(data){
 }
 
 function addPolyGLLayer(geo,keep){
-	var m = Math.abs(min);
+	const m = Math.abs(min);
 	webGL = L.glify.shapes({
 		map: map,
 		data: geo,
 		color: function(_i,feature){
-			if (feature.properties.value){
-				const percent = (m + feature.properties.value) / diff;
-				var col = gradient.rgbAt(percent).toRgb();
+			const percent = (m + feature.properties.value) / diff;
+			var col = cachedColors[percent];
+			if (col){
+				return col;
+			} else {
+				col = gradient.rgbAt(percent).toRgb();
 				col.r = col.r / 255;
 				col.g = col.g / 255;
 				col.b = col.b / 255;
+				cachedColors[percent] = col;
 				return col;
-			} else {
-				return {
-					r: 200,
-					g: 200,
-					b: 200
-				};
 			}
 		},
 		click: function(e,feature){
@@ -239,7 +237,7 @@ function addPolyGLLayer(geo,keep){
 }
 function updateGLLayer(geo){
 	webGL.settings.data = geo;
-	webGL.setup().render();
+	webGL.render();
 	return geo;
 }
 

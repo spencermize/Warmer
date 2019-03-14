@@ -11,11 +11,10 @@ import '../../../Leaflet.glify/glify.js';
 import './leafletExport.js';
 
 var map,min,max,rotate,diff,webGL;
-var layers = [];
 var cachedColors = [];
 const db = new Dexie('Cache');
 db.version(1).stores({
-	layers: '++id,date,layer'
+	layers: '&index'
 });
 const gradient = tinygradient(['rgb(0,0,255)','rgb(200,200,200)','rgb(255,0,0)']);
 $(async function(){
@@ -51,16 +50,20 @@ async function initMap(){
 }
 
 function clearMap(){
-	layers.forEach(function(layer){
-		map.removeLayer(layer);
-	});
+	const blank = {
+		data: [],
+		lat: [],
+		lng: []
+	};
+	if (webGL && webGL.type === 'pointsGL'){
+		webGL.settings.data = setupPoints(blank);
+	} else if (webGL){
+		webGL.settings.data = setupGeo(blank);
+	}
 	if (webGL){
-		webGL.settings.data = setupGeo({
-			data: [],
-			lat: [],
-			lng: []
-		});
 		webGL.setup().render();
+	}
+	if (rotate){
 		clearTimeout(rotate);
 	}
 }
@@ -71,61 +74,38 @@ function buff(){
 		loading(false);
 	},5000);
 }
-async function loadMap(date,type,clear){
+async function loadMaps(sDate,eDate,clear){
 	if (clear){
 		clearMap();
 	}
-
-	if (await db.layers.where({ date: date }).count() === 0){
-		await $.getJSON(`/api/netcdf/temperature/${date}/geojson`,async function(data){
-			var layer = data[0].data;
-			await db.layers.add({
-				layer: layer,
-				date: Number(data[0].index),
-				meta: data[0].meta
-			});
+	if (await db.layers.where('index').between(sDate,eDate,true,true).count() !== eDate - sDate + 1){
+		await $.getJSON(`/api/netcdf/temperature/${sDate}/${eDate}/geojson`,async function(data){
+			await db.layers.bulkPut(data);
 		});
 	}
 }
-async function loadMaps(sDate,eDate,type,clear){
-	if (clear){
-		clearMap();
-	}
-	await $.getJSON(`/api/netcdf/temperature/${sDate}/${eDate}/geojson`,async function(data){
-		for (var i = 0; i <= data.length - 1; i++){
-			var layer;
-			if (type === 'pointsGL'){
-				layer = data[i].data;
-			} else {
-				layer = setupGeo(data[i].data);
-			}
-			await db.layers.add({
-				layer: layer,
-				date: Number(data[i].index),
-				meta: data[i].meta
-			});
-		}
-	});
-}
 
 async function renderMap(date,type,keep = true){
-	const layer = await db.layers.where({ date: date }).first();
+	const layer = await db.layers.where({ index: date }).first();
 	if (!layer){
 		return false;
 	} else {
 		if (type === 'pointsGL'){
-			if (!webGL){
-				addPointGLLayer(layer.layer,keep);
+			var points = setupPoints(layer);
+			if (!webGL || webGL.type !== type){
+				addPointGLLayer(points,keep);
 			} else {
-				updateGLLayer(layer.layer);
+				updateGLLayer(points);
 			}
 		} else {
-			if (!webGL){
-				addPolyGLLayer(setupGeo(layer.layer),keep);
+			var shapes = setupGeo(layer);
+			if (!webGL || webGL.type !== type){
+				addPolyGLLayer(shapes,keep);
 			} else {
-				updateGLLayer(setupGeo(layer.layer);
+				updateGLLayer(shapes);
 			}
 		}
+		webGL.type = type;
 		addMeta(layer.meta);
 		return true;
 	}
@@ -154,12 +134,12 @@ async function load(type){
 
 	if (dEnd && !dStart){
 		buff();
-		await loadMap(dEnd,type,true);
-		renderMap(dEnd);
+		await loadMaps(dEnd,dEnd,true);
+		renderMap(dEnd,type);
 	} else if (dStart && dEnd){
 		loading(true);
+		await loadMaps(dStart,dEnd,true);
 		loop(dStart,dStart,dEnd,type);
-		await loadMaps(dStart,dEnd,type,true);
 	} else {
 		err('Sorry, date was out of range.');
 	}
@@ -183,48 +163,31 @@ function loop(current,start,end,type){
 		loop(i,start,end,type);
 	},$('#speed').val());
 }
-function addPointGLLayer(data){
-	var layer = [];
-	for (var lat = 0; lat < data.lat.length - 1; lat++){
-		for (var lng = 0; lng < data.lng.length - 1; lng++){
-			const val = data.data[lat][lng];
-			if (val !== null && val !== 0){
-				var percent = (Math.abs(min) + val) / diff;
-				layer.push([data.lat[lat],data.lng[lng],percent]);
-			}
-		}
-	}
-	L.glify.points({
-		map: map,
-		data: layer,
+function addPointGLLayer(data,keep){
+	webGL = L.glify.points({
+		map,
+		data,
 		color: function(_i,point){
-			var col = gradient.rgbAt(point[2]).toRgb();
-			col.r = col.r / 255;
-			col.g = col.g / 255;
-			col.b = col.b / 255;
+			var col = colorRatios(gradient.rgbAt(point[2]).toRgb());
 			return col;
 		},
 		size: 20,
-		preserveDrawingBuffer: true
+		preserveDrawingBuffer: keep
 	});
 }
 
-function addPolyGLLayer(geo,keep){
+function addPolyGLLayer(data,keep){
 	const m = Math.abs(min);
 	webGL = L.glify.shapes({
-		map: map,
-		data: geo,
+		map,
+		data,
 		color: function(_i,feature){
 			const percent = (m + feature.properties.value) / diff;
 			var col = cachedColors[percent];
 			if (col){
 				return col;
 			} else {
-				col = gradient.rgbAt(percent).toRgb();
-				col.r = col.r / 255;
-				col.g = col.g / 255;
-				col.b = col.b / 255;
-				cachedColors[percent] = col;
+				col = colorRatios(gradient.rgbAt(percent).toRgb());
 				return col;
 			}
 		},
@@ -234,8 +197,14 @@ function addPolyGLLayer(geo,keep){
 		opacity: 0.85,
 		preserveDrawingBuffer: keep
 	});
+	return data;
+}
 
-	return geo;
+function colorRatios(col){
+	col.r = col.r / 255;
+	col.g = col.g / 255;
+	col.b = col.b / 255;
+	return col;
 }
 function updateGLLayer(geo){
 	webGL.settings.data = geo;
@@ -251,6 +220,20 @@ function setupGeo(data){
 	});
 
 	return geo;
+}
+
+function setupPoints(data){
+	var layer = [];
+	for (var lat = 0; lat < data.lat.length - 1; lat++){
+		for (var lng = 0; lng < data.lng.length - 1; lng++){
+			const val = data.data[lat][lng];
+			if (val !== null && val !== 0){
+				var percent = (Math.abs(min) + val) / diff;
+				layer.push([data.lat[lat],data.lng[lng],percent]);
+			}
+		}
+	}
+	return layer;
 }
 function download(){
 	var downloadOptions = {

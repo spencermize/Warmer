@@ -98,15 +98,17 @@ function getGlobe(vari,date){
 function getGeoJSON(vari,date,eDate){
 	var ret = [];
 	eDate = eDate || date;
-	for (var i = date; i <= eDate; i++){
-		const data = getGlobe(vari,i);
+	for (var index = Number(date); index <= eDate; index++){
+		const data = getGlobe(vari,index);
 		const vars = parsed.root.variables;
 		const lat = _.toArray(vars.latitude.readSlice(0,vars.latitude.dimensions[0].length));
 		const lng = _.toArray(vars.longitude.readSlice(0,vars.longitude.dimensions[0].length));
 
 		ret.push({
-			data: { lat: lat,lng: lng,data: data.data },
-			index: i,
+			index,
+			lat,
+			lng,
+			data: data.data,
 			meta: data.meta
 		});
 	}

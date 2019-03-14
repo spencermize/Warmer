@@ -7,8 +7,6 @@ import grid2geojson from 'grid2geojson';
 import Dexie from 'dexie';
 import L from 'leaflet';
 import '../../node_modules/leaflet-providers/leaflet-providers.js';
-//import 'leaflet.vectorgrid';
-//import 'leaflet.heat';
 import '../../../Leaflet.glify/glify.js';
 import './leafletExport.js';
 
@@ -120,9 +118,7 @@ async function renderMap(date,type,keep = true){
 	if (!layer){
 		return false;
 	} else {
-		if (type === 'poly'){
-			addPolyLayer(layer.layer);
-		} else if (type === 'pointsGL'){
+		if (type === 'pointsGL'){
 			addPointGLLayer(layer.layer);
 		} else {
 			if (!webGL){
@@ -143,9 +139,6 @@ $('.load').on('click',function(e){
 	load($(e.target).data('type'));
 });
 
-function updateMeta(meta){
-	$('#meta .date').text(meta.date);
-}
 function addMeta(meta){
 	Object.keys(meta).forEach(function(el){
 		var metaEl = $('#meta');
@@ -212,32 +205,6 @@ function addPointGLLayer(data){
 		size: 20,
 		preserveDrawingBuffer: true
 	});
-}
-function addPolyLayer(data){
-	var geo = grid2geojson.toGeoJSON(data.lat,data.lng,data.data,false);
-
-	geo.features = _.filter(geo.features,function(o){
-		return o.properties.value;
-	});
-
-	layers.push(new L.vectorGrid.slicer(geo,{ //eslint-disable-line new-cap
-		rendererFactory: L.canvas.tile,
-		vectorTileLayerStyles: {
-			sliced: function(feature){
-				const percent = (Math.abs(min) + feature.value) / diff;
-				var col = grad(percent).toHexString();
-				return {
-					fillColor: col,
-					fill: true,
-					stroke: true,
-					color: col,
-					fillOpacity: 0.5,
-					weight: 0
-				};
-			}
-		}
-	}));
-	layers[layers.length - 1].addTo(map);
 }
 
 function addPolyGLLayer(geo,keep){

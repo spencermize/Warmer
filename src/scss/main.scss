@@ -1,12 +1,15 @@
 @import "variables";
 @import "~tiny-date-picker/tiny-date-picker";
 
-html,body,#map{
+html,body{
 	min-height: 100vh;
 	min-width: 100vw;
 	overflow: hidden;
 }
-.dp-modal,.controls,.alert{
+#map{
+	height: 100vh;
+}
+.dp-modal,.alert{
 	z-index: 1000;
 }
 .alert{
@@ -20,7 +23,25 @@ html,body,#map{
 	display: block;
 }
 
-.bottom-right{
+.bottom-left{
 	bottom: 0;
-	right: 0;
+}
+
+.shimmer {
+	color:rgba(0,0,0,.75);
+	background-size: 40% 100%;
+	-webkit-background-clip: text;
+	animation-name: shimmer;
+	animation-duration: 10s;
+	animation-iteration-count: infinite;
+	background-repeat: no-repeat;
+	background-image: linear-gradient(to right,#666,#0f0,#666);
+	background-position: top left;		
+}
+
+@keyframes shimmer {
+	50%,100% {
+		background-image: linear-gradient(to right, #666,#f00,#666);
+		background-position: top right;				
+	}
 }

@@ -1,35 +1,49 @@
-<div class="d-flex flex-row position-absolute w-100 mt-3 pr-3 justify-content-end controls align-items-start">
-	<div class="input-group col-md-1 date-holder ">
-		<input type="text" class="date-first date form-control" placeholder="start date" />
-	</div>
-	<div class="input-group col-md-1 date-holder ">
-		<input type="text" class="date-last date form-control" placeholder="end date" value="2018/11" />
-		<div class="input-group-append spinner-holder">
-			<button class="btn btn-primary" type="button" disabled>
-				<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>
-				<span class="sr-only">Loading...</span>
-			</button>
+<div class="d-flex flex-row position-absolute w-100 align-items-stretch">
+	<nav class="col-md-2 bg-light sidebar p-3 controls">
+		<h3 class="display-3 shimmer text-center">Warmer</h3>
+		<p class="lead text-muted text-center">Our Changing World</p>
+		<div class="form-group py-2">
+			<label>Start Date (optional)</label>			
+			<div class="input-group date-holder">
+				<input type="text" class="date-first date form-control" />
+			</div>
 		</div>
-	</div>
-	<div class="form-group col-md-1">
-		<label for="formControlRange">Animation Speed</label>
-		<input type="range" class="form-control-range" id="speed" min="50" max="5000">
-	</div>
-	<div class="btn-group mr-2">
-		<button class="btn btn-primary load" data-type="polyGL" type="button" id="dropdownMenuButton" aria-haspopup="true" aria-expanded="false">
-			Load
-		</button>
-		<button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-			<span class="sr-only">Toggle Dropdown</span>
-		</button>
-		<div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-			<a class="load dropdown-item" data-type="pointsGL" href="#">Load as Points</a>
+		<div class="form-group">
+			<label>End Date</label>
+			<div class="input-group date-holder">
+				<input type="text" class="date-last date form-control" placeholder="end date" value="2018/11" />
+				<div class="input-group-append spinner-holder">
+					<button class="btn btn-primary" type="button" disabled>
+						<span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>
+						<span class="sr-only">Loading...</span>
+					</button>
+				</div>
+			</div>
 		</div>
-	</div>
-	<button class="download btn btn-secondary">Download Image</button>
-</div>
 
-<div id="map"></div>
-<div id="meta" class="bottom-right position-absolute bg-light controls m-2 p-2">
-	<div class="date"></div>
+		<div class="form-group">
+			<label for="formControlRange">Animation Speed</label>
+			<input type="range" class="form-control-range" id="speed" min="50" max="5000">
+		</div>
+		<div class="btn-group py-2">
+			<button class="btn btn-primary load" data-type="polyGL" type="button" id="dropdownMenuButton"
+				aria-haspopup="true" aria-expanded="false">
+				Load
+			</button>
+			<button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown"
+				aria-haspopup="true" aria-expanded="false">
+				<span class="sr-only">Toggle Dropdown</span>
+			</button>
+			<div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+				<a class="load dropdown-item" data-type="pointsGL" href="#">Load as Points</a>
+			</div>
+		</div>
+		<button class="download btn btn-secondary">Download Image</button>
+		<div id="meta" class="bottom-left position-absolute controls m-2 p-2">
+			<div class="date"></div>
+		</div>
+	</nav>
+	<div class="content col-md-10 p-0">
+		<div id="map" class="col-md-12"></div>
+	</div>
 </div>

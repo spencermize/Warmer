@@ -39,7 +39,8 @@ async function initMap(){
 		zoom: 2.5,
 		minZoom: 2.5,
 		zoomSnap: 0.25,
-		attributionControl: false
+		attributionControl: false,
+		zoomControl: false
 	});
 	L.control.scale().addTo(map);
 	L.tileLayer.provider('CartoDB.Positron').addTo(map);
@@ -107,6 +108,7 @@ async function renderMap(date,type,keep = true){
 		}
 		webGL.type = type;
 		addMeta(layer.meta);
+		loading(false);
 		return true;
 	}
 }
@@ -122,7 +124,7 @@ function addMeta(meta){
 	Object.keys(meta).forEach(function(el){
 		var metaEl = $('#meta');
 		metaEl.find(`.${el}`).remove();
-		metaEl.append(`<div class='${el}'><strong>${el}:</strong> ${meta[el]}</div>`);
+		metaEl.append(`<div class='${el}'><strong>${_.capitalize(el)}:</strong> ${meta[el]}</div>`);
 	});
 }
 async function load(type){
@@ -136,10 +138,12 @@ async function load(type){
 		buff();
 		await loadMaps(dEnd,dEnd,true);
 		renderMap(dEnd,type);
+		$('.download').attr('disabled',false);
 	} else if (dStart && dEnd){
 		loading(true);
 		await loadMaps(dStart,dEnd,true);
 		loop(dStart,dStart,dEnd,type);
+		$('.download').attr('disabled',true);
 	} else {
 		err('Sorry, date was out of range.');
 	}
@@ -159,7 +163,7 @@ function loop(current,start,end,type){
 			i = start;
 		}
 		var t1 = performance.now();
-		addMeta({ 'Redraw': Math.round(t1 - t0) });
+		addMeta({ 'Redraw': `${Math.round(t1 - t0)}ms` });
 		loop(i,start,end,type);
 	},$('#speed').val());
 }

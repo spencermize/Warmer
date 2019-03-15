@@ -25,8 +25,23 @@
 			<label for="formControlRange">Animation Speed</label>
 			<input type="range" class="form-control-range" id="speed" min="50" max="5000">
 		</div>
+
 		<div class="btn-group py-2">
-			<button class="btn btn-primary map-control" data-type="polyGL" type="button" id="dropdownMenuButton" aria-haspopup="true" aria-expanded="false">
+			<button class="btn btn-primary file-control" type="button" aria-haspopup="true" aria-expanded="false">
+				{{ files.[0] }}
+			</button>			
+			<button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+				<span class="sr-only">Toggle Dropdown</span>
+			</button>
+			<div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+				{{#each files}}
+					<a class="file-control dropdown-item" href="#">{{this}}</a>
+				{{/each}}
+			</div>			
+		</div>
+
+		<div class="btn-group py-2">
+			<button class="btn btn-primary map-control" data-type="polyGL" type="button" aria-haspopup="true" aria-expanded="false">
 				<i class="fas fa-play play"></i>
 				<i class="fas fa-pause pause"></i>
 			</button>

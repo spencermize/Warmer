@@ -19,6 +19,12 @@ html,body{
 .spinner-holder{
 	display: none;
 }
+.pause,.playing .play{
+	display: none;
+}
+.playing .pause{
+	display: inline-block;
+}
 .loading .spinner-holder{
 	display: block;
 }
@@ -28,7 +34,7 @@ html,body{
 }
 
 .shimmer {
-	color:rgba(0,0,0,.75);
+	color:rgba(0,0,0,.5);
 	background-size: 40% 100%;
 	-webkit-background-clip: text;
 	animation-name: shimmer;

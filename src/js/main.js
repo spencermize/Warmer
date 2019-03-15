@@ -56,6 +56,7 @@ function clearMap(){
 		lat: [],
 		lng: []
 	};
+	pause();
 	if (webGL && webGL.type === 'pointsGL'){
 		webGL.settings.data = setupPoints(blank);
 	} else if (webGL){
@@ -64,11 +65,15 @@ function clearMap(){
 	if (webGL){
 		webGL.setup().render();
 	}
+}
+function pause(){
 	if (rotate){
 		clearTimeout(rotate);
 	}
 }
-
+function isPlaying(){
+	return $('body').hasClass('playing');
+}
 function buff(){
 	loading(true);
 	setTimeout(function(){
@@ -113,13 +118,18 @@ async function renderMap(date,type,keep = true){
 	}
 }
 
-$('button.download').on('click',function(_e){
+const doc = $(document);
+doc.on('click','button.download',function(_e){
 	download();
-});
-$('.load').on('click',function(e){
+}).on('click','.playing .map-control',function(){
+	playing(false);
+	pause();
+}).on('click','body:not(.playing) .map-control',function(e){
 	load($(e.target).data('type'));
 });
-
+function playing(playing){
+	$('body').toggleClass('playing',playing);
+}
 function addMeta(meta){
 	Object.keys(meta).forEach(function(el){
 		var metaEl = $('#meta');
@@ -129,6 +139,7 @@ function addMeta(meta){
 }
 async function load(type){
 	loading(true);
+	playing(true);
 	var start = $('.date-first').val();
 	var end = $('.date-last').val();
 	var dStart = start ? await $.getJSON(`/api/netcdf/time/${start}`) : null;
@@ -142,7 +153,8 @@ async function load(type){
 	} else if (dStart && dEnd){
 		loading(true);
 		await loadMaps(dStart,dEnd,true);
-		loop(dStart,dStart,dEnd,type);
+		var cStart = $('#map').data('current') || dStart;
+		loop(cStart,dStart,dEnd,type);
 		$('.download').attr('disabled',true);
 	} else {
 		err('Sorry, date was out of range.');
@@ -151,20 +163,23 @@ async function load(type){
 
 function loop(current,start,end,type){
 	var i = current;
+	$('#map').data('current',i);
 	rotate = setTimeout(async function(){
-		var t0 = performance.now();
-		var rendered = await renderMap(i,type,false);
-		if (rendered){ //only increment if we successfully rendered updated map
-			i++;
-		} else {
-			buff();
+		if (isPlaying){
+			var t0 = performance.now();
+			var rendered = await renderMap(i,type,false);
+			if (rendered){ //only increment if we successfully rendered updated map
+				i++;
+			} else {
+				buff();
+			}
+			if (i > end){
+				i = start;
+			}
+			var t1 = performance.now();
+			addMeta({ 'Redraw': `${Math.round(t1 - t0)}ms` });
+			loop(i,start,end,type);
 		}
-		if (i > end){
-			i = start;
-		}
-		var t1 = performance.now();
-		addMeta({ 'Redraw': `${Math.round(t1 - t0)}ms` });
-		loop(i,start,end,type);
 	},$('#speed').val());
 }
 function addPointGLLayer(data,keep){
